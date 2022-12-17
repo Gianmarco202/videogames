@@ -9,22 +9,25 @@ const router = Router();
 
 router.get('/getAll', async (req,res, next) => {
     try {
-        const api = await axios.get("https://api.rawg.io/api/games?key=b3951d3d1a2b455e803a35952ecc7a6c&dates=2019-09-01,2019-09-30&platforms=18,1,7")
+        const api = await axios.get("https://api.rawg.io/api/games?key=b3951d3d1a2b455e803a35952ecc7a6c")
 
         const format = api.data.results.map((juego)=> {
             const obj = {
-                id: juego.id,
+                id: juego.id && juego.id,
                 nombre: juego.name,
                 fecha_de_lanzamiento: juego.released,
                 rating: juego.rating,
                 plataformas: juego.platforms.map(n => n.platform.name),
                 generos: juego.genres.map(g => g.name),
-                image: juego.background_image,
+                imagen: juego.background_image,
             };
             return obj;
         })
 
-        const db = await Videogames.findAll({include: [{ model: Generos}]})
+        const db = await Videogames.findAll({
+            include: { 
+                model: Generos
+            }})
         const suma = [...format, ...db]
         res.send(suma)
         
@@ -43,7 +46,7 @@ router.get("/", (req, res, next) => {
         let gamePromiseApi 
         let gamePromiseDb
         if(nombre){
-            gamePromiseApi = axios.get("https://api.rawg.io/api/games?key=b3951d3d1a2b455e803a35952ecc7a6c&dates=2019-09-01,2019-09-30&platforms=18,1,7name=" + nombre)
+            gamePromiseApi = axios.get("https://api.rawg.io/api/games?key=b3951d3d1a2b455e803a35952ecc7a6c" + nombre)
             gamePromiseDb = Videogames.findAll({
                 include: Generos,
                 where: {
@@ -56,7 +59,7 @@ router.get("/", (req, res, next) => {
                 ],
             })
         }else {
-            gamePromiseApi = axios.get("https://api.rawg.io/api/games?key=b3951d3d1a2b455e803a35952ecc7a6c&dates=2019-09-01,2019-09-30&platforms=18,1,7")
+            gamePromiseApi = axios.get("https://api.rawg.io/api/games?key=b3951d3d1a2b455e803a35952ecc7a6c")
             gamePromiseDb = Videogames.findAll({
                 include: Generos
             })
@@ -90,7 +93,6 @@ router.get("/", (req, res, next) => {
 
 
 
-
 router.get("/:id",async (req, res, next) =>{
     try {
         const id = req.params.id;
@@ -99,24 +101,31 @@ router.get("/:id",async (req, res, next) =>{
             videogame = await Videogames.findByPk(id, { include: [{ model: Generos}]})
             
         } else {
-            response = await axios.get("https://api.rawg.io/api/games?key=b3951d3d1a2b455e803a35952ecc7a6c&dates=2019-09-01,2019-09-30&platforms=18,1,7/" + id)
-            videogame = response.data.results
-            
+            respuesta = await axios.get(`https://api.rawg.io/api/games/${id}?key=b3951d3d1a2b455e803a35952ecc7a6c`)
+            videogame   = await respuesta.data
+
+            res.send(`Imagen ${videogame.background_image}
+                      Nombre: ${videogame.name} 
+                      Generos: ${videogame.genres}
+                      Descripcion: ${videogame.description}
+                      Fecha de lanzamiento: ${videogame.released}
+                      Rating: ${videogame.rating}
+                      Plataformas: ${videogame.platforms.map(n => n.platform.name)}`)
         }
-        res.send(videogame)
-            next(error)
+
     } catch (error) {
+        next(error)
         
     }
 
 })
 
 router.post("/create",async (req, res, next) => {
-    const {nombre, descripcion, fecha_de_lanzamiento, rating, plataformas, generos} = req.body;
+    const {nombre, descripcion, fecha_de_lanzamiento, rating, plataformas, generosId} = req.body;
 
     try {
     const nuevoJuego = await  Videogames.create({nombre,descripcion,fecha_de_lanzamiento,rating,plataformas})
-    
+    await nuevoJuego.addGenero(generosId)
     /* nuevoJuego.addGeneros(generos);
     const aux = Videogames.findByPk(nuevoJuego.id, {
         include: [{ model: Generos}],
@@ -129,16 +138,16 @@ router.post("/create",async (req, res, next) => {
     }
 })
 
-router.post("/:videogameId/genero/:generoId", async(req, res, next) => {
+/* router.get("/:videogameId", async(req, res, next) => {
     try {
-        const {videogameId, generoId} =req.params;
+        const {videogameId} =req.params;
         const videogame = await Videogames.findByPk(videogameId)
-        await videogame.addGenero(generoId)
-        res.send(200)
+        
+        res.send(videogame)
     } catch (error) {
         next(error)
     }
-})
+}) */
 
 
 
